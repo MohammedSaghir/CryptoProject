@@ -5,14 +5,12 @@ from cryptography.hazmat.primitives import hashes, padding
 from cryptography.hazmat.primitives.asymmetric import padding as apadding
 from cryptography.exceptions import InvalidSignature
 
-# Base64 helpers
 def b64e(b: bytes) -> str:
     return base64.b64encode(b).decode("ascii")
 
 def b64d(s: str) -> bytes:
     return base64.b64decode(s.encode("ascii"))
 
-# RSA OAEP (for wrapping the AES key)
 def rsa_wrap_aes_key(aes_key: bytes, peer_public_key) -> bytes:
     return peer_public_key.encrypt(
         aes_key,
@@ -33,7 +31,6 @@ def rsa_unwrap_aes_key(wrapped: bytes, private_key) -> bytes:
         ),
     )
 
-# RSA-PSS signatures (SHA-256)
 def sign_message(message: bytes, private_key) -> bytes:
     return private_key.sign(
         message,
@@ -59,7 +56,6 @@ def verify_signature(message: bytes, signature: bytes, public_key) -> bool:
     except InvalidSignature:
         return False
 
-# AES-CBC with PKCS7 padding
 def aes_encrypt_cbc(plaintext: bytes, key: bytes) -> Tuple[bytes, bytes]:
     iv = os.urandom(16)
     padder = padding.PKCS7(128).padder()
@@ -76,9 +72,8 @@ def aes_decrypt_cbc(iv: bytes, ciphertext: bytes, key: bytes) -> bytes:
     unpadder = padding.PKCS7(128).unpadder()
     return unpadder.update(padded) + unpadder.finalize()
 
-# Package helpers for console transport
 def make_packet(iv: bytes, ct: bytes, sig: bytes) -> Dict[str, str]:
     return {"iv": b64e(iv), "ct": b64e(ct), "sig": b64e(sig)}
 
-def parse_packet(pkg: Dict[str, str]) -> Tuple[bytes, bytes, bytes]:
+def parse_packet(pkg: Dict[str, str]):
     return b64d(pkg["iv"]), b64d(pkg["ct"]), b64d(pkg["sig"])

@@ -7,7 +7,7 @@ class User:
         self._private_key = rsa.generate_private_key(public_exponent=65537, key_size=rsa_bits)
         self._public_key = self._private_key.public_key()
         self.peer_public_key = None
-        self.session_key = None  
+        self.session_key = None
 
     def public_pem(self) -> bytes:
         return self._public_key.public_bytes(
