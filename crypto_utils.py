@@ -56,24 +56,21 @@ def verify_signature(message: bytes, signature: bytes, public_key) -> bool:
     except InvalidSignature:
         return False
 
-def aes_encrypt_cbc(plaintext: bytes, key: bytes) -> Tuple[bytes, bytes]:
-    iv = os.urandom(16)
-    padder = padding.PKCS7(128).padder()
-    padded = padder.update(plaintext) + padder.finalize()
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+def aes_encrypt_gcm(plaintext: bytes, key: bytes) -> Tuple[bytes, bytes, bytes]:
+    iv = os.urandom(12)
+    cipher = Cipher(algorithms.AES(key), modes.GCM(iv))
     enc = cipher.encryptor()
-    ct = enc.update(padded) + enc.finalize()
-    return iv, ct
+    ct = enc.update(plaintext) + enc.finalize()
+    tag = enc.tag
+    return iv, ct, tag
 
-def aes_decrypt_cbc(iv: bytes, ciphertext: bytes, key: bytes) -> bytes:
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+def aes_decrypt_gcm(iv: bytes, ciphertext: bytes, tag: bytes, key: bytes) -> bytes:
+    cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag))
     dec = cipher.decryptor()
-    padded = dec.update(ciphertext) + dec.finalize()
-    unpadder = padding.PKCS7(128).unpadder()
-    return unpadder.update(padded) + unpadder.finalize()
+    return dec.update(ciphertext) + dec.finalize()
 
-def make_packet(iv: bytes, ct: bytes, sig: bytes) -> Dict[str, str]:
-    return {"iv": b64e(iv), "ct": b64e(ct), "sig": b64e(sig)}
+def make_packet(iv: bytes, ct: bytes, tag: bytes, sig: bytes) -> Dict[str, str]:
+    return {"iv": b64e(iv), "ct": b64e(ct), "tag": b64e(tag), "sig": b64e(sig)}
 
 def parse_packet(pkg: Dict[str, str]):
-    return b64d(pkg["iv"]), b64d(pkg["ct"]), b64d(pkg["sig"])
+    return b64d(pkg["iv"]), b64d(pkg["ct"]), b64d(pkg["tag"]), b64d(pkg["sig"])

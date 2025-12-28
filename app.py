@@ -5,7 +5,7 @@ from user import User
 from crypto_utils import (
     rsa_wrap_aes_key, rsa_unwrap_aes_key,
     sign_message, verify_signature,
-    aes_encrypt_cbc, aes_decrypt_cbc, b64e,
+    aes_encrypt_gcm, aes_decrypt_gcm, b64e,
 )
 
 class ConnectionWindow(tk.Tk):
@@ -138,9 +138,15 @@ class ChatWindow(tk.Tk):
         self._add_bubble(self.nickname, text, mine=True, ok=True)
 
         msg = text.encode("utf-8")
-        iv, ct = aes_encrypt_cbc(msg, self.session_key)
+        iv, ct, tag = aes_encrypt_gcm(msg, self.session_key)
         sig = sign_message(msg, self.me.private_key)
-        packet = b"|".join([b64e(iv).encode(), b64e(ct).encode(), b64e(sig).encode(), self.nickname.encode()])
+        packet = b"|".join([
+            b64e(iv).encode(),
+            b64e(ct).encode(),
+            b64e(tag).encode(),
+            b64e(sig).encode(),
+            self.nickname.encode()
+        ])
         self._send_bytes(packet)
 
     def _recv_loop(self):
@@ -158,9 +164,9 @@ class ChatWindow(tk.Tk):
         while not self.rx_q.empty():
             data = self.rx_q.get()
             try:
-                iv_b64, ct_b64, sig_b64, nick = data.split(b"|", 3)
-                iv, ct, sig = b64decode(iv_b64), b64decode(ct_b64), b64decode(sig_b64)
-                plain = aes_decrypt_cbc(iv, ct, self.session_key)
+                iv_b64, ct_b64, tag_b64, sig_b64, nick = data.split(b"|", 4)
+                iv, ct, tag, sig = b64decode(iv_b64), b64decode(ct_b64), b64decode(tag_b64), b64decode(sig_b64)
+                plain = aes_decrypt_gcm(iv, ct, tag, self.session_key)
                 ok = self._verify_with_peer(plain, sig)
                 self._add_bubble(nick.decode(), plain.decode("utf-8"), mine=False, ok=ok)
             except Exception as e:
