@@ -48,7 +48,7 @@ class ChatWindow(tk.Tk):
     def __init__(self, nickname: str, mode: str, ip: str, port: int):
         super().__init__()
         self.title(f"Secure Messenger - {nickname}")
-        self.geometry("520x700")
+        self.geometry("520x400")
         self.nickname, self.mode, self.ip, self.port = nickname, mode, ip, port
 
         self.me = User(nickname, rsa_bits=2048)
